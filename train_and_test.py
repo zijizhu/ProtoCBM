@@ -66,7 +66,7 @@ def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=Non
             if epoch < args.proto_epochs:
                 ortho_cost = model_without_ddp.get_ortho_loss()
                 consis_cost = model_without_ddp.get_CLA_loss(shallow_feas, deep_feas, scales=[1, 2], consis_thresh=args.consis_thresh)
-                mse_cost = model_without_ddp.get_CIA_loss(all_feas, bz, layer_idx=3)
+                mse_cost = model_without_ddp.get_CIA_loss(all_feas, bz, layer_idx=-1)
             else:
                 cls_dis_cost, sep_dis_cost = model_without_ddp.get_PA_loss(proto_acts)
 
@@ -153,8 +153,11 @@ def warm_only_new(model):
 def joint_new(model):
     if hasattr(model, 'module'):
         model = model.module
-    for p in model.features.parameters():
-        p.requires_grad = True
+    if 'vit' in str(model):
+        model.features.set_requires_grad()
+    else:
+        for p in model.features.parameters():
+            p.requires_grad = True
     for p in model.add_on_layers.parameters():
         p.requires_grad = True
     model.prototype_vectors.requires_grad = True

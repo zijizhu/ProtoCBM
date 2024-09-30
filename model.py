@@ -1,4 +1,5 @@
 import torch
+from functools import partial
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,6 +9,7 @@ from models.resnet_features_all import resnet18_features, resnet34_features, res
 from models.deit_features_all import deit_tiny_features, deit_small_features, deit_base_features
 from util.local_parts import part_attributes_names, attributes_names, id_to_attributes
 from util.rotate_tensor import multiple_rotate_all, mask_tensor
+from models.vit_features import DINOv2BackboneExpanded
 
 base_architecture_to_features = {'resnet18': resnet18_cub_features,
                                  'resnet34': resnet34_features,
@@ -17,7 +19,10 @@ base_architecture_to_features = {'resnet18': resnet18_cub_features,
                                  'resnet152': resnet152_features,
                                  'deit_tiny': deit_tiny_features,
                                  'deit_small': deit_small_features,
-                                 'deit_base': deit_base_features,}
+                                 'deit_base': deit_base_features,
+                                 # Foundational model experiments
+                                 'dinov2_vits_exp': partial(DINOv2BackboneExpanded, name="dinov2_vits14_reg4", n_splits=3),
+                                 'dinov2_vitb_exp': partial(DINOv2BackboneExpanded, name="dinov2_vitb14_reg4", n_splits=3)}
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -61,6 +66,12 @@ class NewNet(nn.Module):
         elif features_name.startswith('MYVISION'):
             self.shallow_layer_idx = 3
             first_add_on_layer_in_channels = self.features.embed_dim
+        elif features_name == "DINOV2_VITS14_REG4":
+            self.shallow_layer_idx = 0
+            first_add_on_layer_in_channels = 384
+        elif features_name == "DINOV2_VITB14_REG4":
+            self.shallow_layer_idx = 0
+            first_add_on_layer_in_channels = 768
         else:
             raise Exception('other base base_architecture NOT implemented')
 

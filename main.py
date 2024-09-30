@@ -150,7 +150,7 @@ if __name__ == "__main__":
     os.makedirs(model_dir, exist_ok=True)
 
     shutil.copy(src=os.path.join(os.getcwd(), __file__), dst=model_dir)
-    shutil.copy(src=os.path.join(os.getcwd(), 'models', base_architecture_type + '_features_all.py'), dst=model_dir)
+    # shutil.copy(src=os.path.join(os.getcwd(), 'models', base_architecture_type + '_features_all.py'), dst=model_dir)
     shutil.copy(src=os.path.join(os.getcwd(), 'model.py'), dst=model_dir)
     shutil.copy(src=os.path.join(os.getcwd(), 'train_and_test.py'), dst=model_dir)
 
