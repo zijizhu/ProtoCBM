@@ -124,6 +124,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    torch.multiprocessing.set_sharing_strategy('file_system')
+
     __global_values__ = dict(it=0)
     seed = args.seed + utils.get_rank()
     set_seed(seed)
