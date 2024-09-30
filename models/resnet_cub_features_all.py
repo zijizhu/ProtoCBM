@@ -1,13 +1,13 @@
 import torch
 import torch.nn as nn
-from pytorchcv.model_provider import get_model as ptcv_get_model
+# from pytorchcv.model_provider import get_model as ptcv_get_model
 
 
 class ResNet_CUB_features(nn.Module):
     def __init__(self, base_architecture, pretrained=True, model_dir='pretrained_models'):
         super(ResNet_CUB_features, self).__init__()
         # resnet18_cub
-        self.model = ptcv_get_model(base_architecture, pretrained=pretrained, root=model_dir)
+        # self.model = ptcv_get_model(base_architecture, pretrained=pretrained, root=model_dir)
         del self.model.output    # Delete the last layer
         self.features = nn.Sequential(*list(self.model.children()))
 

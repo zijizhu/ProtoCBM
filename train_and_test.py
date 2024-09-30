@@ -5,6 +5,7 @@ import util.utils as utils
 from util.local_parts import train_pos_weights
 from util.rotate_tensor import multiple_rotate_all, mask_tensor
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=None, use_l1_mask=True,
                    coefs=None, args=None, log=print):
@@ -22,7 +23,7 @@ def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=Non
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 60
-    pos_weight = torch.from_numpy(train_pos_weights).cuda()
+    pos_weight = torch.from_numpy(train_pos_weights).to(device)
 
     logger = logging.getLogger("train")
     logger.info("Start train one epoch")
@@ -33,13 +34,13 @@ def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=Non
             image, label = data_item
         else:
             image, label, attributes = data_item
-            attributes = torch.stack(attributes).permute(1, 0).type(torch.FloatTensor).cuda()
+            attributes = torch.stack(attributes).permute(1, 0).type(torch.FloatTensor).to(device)
 
         attributes_criterion = torch.nn.BCEWithLogitsLoss()
         # attributes_criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
-        input = image.cuda()
-        target = label.cuda()
+        input = image.to(device)
+        target = label.to(device)
         bz = target.shape[0]
 
         # Augment Images

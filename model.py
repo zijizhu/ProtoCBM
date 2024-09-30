@@ -19,6 +19,9 @@ base_architecture_to_features = {'resnet18': resnet18_cub_features,
                                  'deit_small': deit_small_features,
                                  'deit_base': deit_base_features,}
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 class NewNet(nn.Module):
     def __init__(self, features, img_size, prototype_shape,
                  proto_layer_rf_info, num_classes, init_weights=True,
@@ -105,7 +108,7 @@ class NewNet(nn.Module):
         for grp_idx in range(self.num_concept_groups):
             for part_name in self.concept_groups[grp_idx]:
                 self.mask_a_groups[grp_idx] += torch.FloatTensor(np.array(attributes_names) == part_name)
-            self.indexes_groups.append(torch.nonzero(self.mask_a_groups[grp_idx] == 1).squeeze(dim=1).cuda())
+            self.indexes_groups.append(torch.nonzero(self.mask_a_groups[grp_idx] == 1).squeeze(dim=1).to(device))
         
         if init_weights:
             self._initialize_weights()
@@ -163,7 +166,7 @@ class NewNet(nn.Module):
         subspace_basis_matrix = cur_basis_matrix.reshape(self.num_classes, self.num_prototypes_per_class, self.prototype_shape[1])
         subspace_basis_matrix_T = torch.transpose(subspace_basis_matrix,1,2)
         orth_operator = torch.matmul(subspace_basis_matrix, subspace_basis_matrix_T)
-        I_operator = torch.eye(subspace_basis_matrix.size(1), subspace_basis_matrix.size(1)).cuda()
+        I_operator = torch.eye(subspace_basis_matrix.size(1), subspace_basis_matrix.size(1)).to(device)
         difference_value = orth_operator - I_operator
         ortho_cost = torch.sum(torch.relu(torch.norm(difference_value,p=1,dim=[1,2]) - 0))
 
@@ -222,8 +225,8 @@ class NewNet(nn.Module):
         proto_acts_max, proto_acts_min = proto_acts.amax(dim=(3, 4), keepdim=True), proto_acts.amin(dim=(3, 4), keepdim=True)
         proto_acts = (proto_acts - proto_acts_min) / (proto_acts_max - proto_acts_min)  # (B, 112, 10, fea_h, fea_w)
 
-        posx_values, posy_values = torch.arange(fea_size)[None, :, None].repeat(fea_size, 1, 1).cuda(), \
-                                    torch.arange(fea_size)[:, None, None].repeat(1, fea_size, 1).cuda() # (fea_h, fea_w, 1), (fea_h, fea_w, 1)
+        posx_values, posy_values = torch.arange(fea_size)[None, :, None].repeat(fea_size, 1, 1).to(device), \
+                                    torch.arange(fea_size)[:, None, None].repeat(1, fea_size, 1).to(device) # (fea_h, fea_w, 1), (fea_h, fea_w, 1)
         pos_values = torch.cat([posx_values, posy_values], dim=-1)[None, None, None, :]  # (1, 1, 1, fea_h, fea_w, 2)
         pos_weights = proto_acts.unsqueeze(dim=-1) # (B, 112, 10, fea_h, fea_w, 1)
         pos_weights = pos_weights / pos_weights.sum(dim=(3, 4), keepdim=True)

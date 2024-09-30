@@ -1,2 +1,5 @@
 .vscode/
 __pycache__/
+datasets/
+output_cosine/
+pretrained_models/

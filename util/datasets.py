@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 from util.local_parts import id_to_path, name_to_id, id_to_label, id_to_attributes, cls_to_attributes, id_to_cls
 
 class Cub2011Eval(Dataset):
-    base_folder = 'test_cropped'
+    base_folder = 'cub200_cropped/test_cropped'
 
     def __init__(self, root, train=True, transform=None, loader=default_loader):
         self.root = os.path.expanduser(root)
@@ -20,11 +20,11 @@ class Cub2011Eval(Dataset):
                                ' You can use download=True to download it')
 
     def _load_metadata(self):
-        images = pd.read_csv(os.path.join(self.root, 'images.txt'), sep=' ',
+        images = pd.read_csv(os.path.join(self.root, 'CUB_200_2011', 'images.txt'), sep=' ',
                              names=['img_id', 'filepath'])
-        image_class_labels = pd.read_csv(os.path.join(self.root, 'image_class_labels.txt'),
+        image_class_labels = pd.read_csv(os.path.join(self.root, 'CUB_200_2011', 'image_class_labels.txt'),
                                          sep=' ', names=['img_id', 'target'])
-        train_test_split = pd.read_csv(os.path.join(self.root, 'train_test_split.txt'),
+        train_test_split = pd.read_csv(os.path.join(self.root, 'CUB_200_2011', 'train_test_split.txt'),
                                        sep=' ', names=['img_id', 'is_training_img'])
 
         data = images.merge(image_class_labels, on='img_id')
@@ -53,7 +53,7 @@ class Cub2011Eval(Dataset):
 
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
-        path = os.path.join(self.root, self.base_folder, sample.filepath)
+        path = os.path.join(self.root, 'cub200_cropped', self.base_folder, sample.filepath)
         target = sample.target - 1  # Targets start at 1 by default, so shift to 0
         img = self.loader(path)
         img_id = sample.img_id

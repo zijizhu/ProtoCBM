@@ -3,6 +3,7 @@ import numpy as np
 from tqdm import tqdm
 from util.local_parts import attributes_names, part_attributes_names, id_to_attributes, id_to_bbox, id_to_part_loc, part_name_to_part_indexes
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def get_activation_maps(ppnet, test_loader, corre_proto_num=10):
     # Get the averaged activation maps of all prototypes
@@ -11,8 +12,8 @@ def get_activation_maps(ppnet, test_loader, corre_proto_num=10):
         ppnet = ppnet.module
     all_proto_acts, all_targets, all_img_ids = [], [], []
     for _, (data, targets, img_ids) in tqdm(enumerate(test_loader)):
-        data = data.cuda()
-        targets = targets.cuda()
+        data = data.to(device)
+        targets = targets.to(device)
         _, proto_acts = ppnet.push_forward(data)
 
         all_proto_acts.append(proto_acts.detach())
@@ -28,7 +29,7 @@ def get_activation_maps(ppnet, test_loader, corre_proto_num=10):
         attributes = id_to_attributes[img_id.item()]
         all_attributes.append(attributes)
     all_attributes = np.stack(all_attributes, axis=0)
-    all_attributes = torch.from_numpy(all_attributes).cuda()
+    all_attributes = torch.from_numpy(all_attributes).to(device)
     n_attributes = all_attributes.shape[-1]
 
     # Get the averaged activation map of each attribute
@@ -60,7 +61,7 @@ def evaluate_concept_trustworthiness(all_activation_maps, all_img_ids, bbox_half
         attributes = id_to_attributes[img_id.item()]
         all_attributes.append(attributes)
     all_attributes = np.stack(all_attributes, axis=0)
-    all_attributes = torch.from_numpy(all_attributes).cuda()
+    all_attributes = torch.from_numpy(all_attributes).to(device)
     n_attributes = all_attributes.shape[-1]
 
     # Gather the part locs of each image
@@ -79,7 +80,7 @@ def evaluate_concept_trustworthiness(all_activation_maps, all_img_ids, bbox_half
             re_loc_x, re_loc_y = int(img_size * ratio_x), int(img_size * ratio_y)
             all_part_locs[idx, part_id, 0] = re_loc_y
             all_part_locs[idx, part_id, 1] = re_loc_x
-    all_part_locs = torch.from_numpy(all_part_locs).cuda()
+    all_part_locs = torch.from_numpy(all_part_locs).to(device)
 
     # Only evaluate the part attributes
     all_loc_acc, all_attri_idx, all_num_samples = [], [], []
@@ -87,7 +88,7 @@ def evaluate_concept_trustworthiness(all_activation_maps, all_img_ids, bbox_half
         attribute_name = attributes_names[attri_idx]   # The name of current attribute
         if attribute_name not in part_attributes_names:    # Only evaluate the part attributes, eliminate the attributes for the whole body
             continue
-        part_indexes = torch.LongTensor(part_name_to_part_indexes[attribute_name]).cuda()
+        part_indexes = torch.LongTensor(part_name_to_part_indexes[attribute_name]).to(device)
 
         attri_labels = all_attributes[:, attri_idx]
         select_img_indexes = torch.nonzero(attri_labels == 1).squeeze(dim=1)   # Select all the test images containing this attribute
