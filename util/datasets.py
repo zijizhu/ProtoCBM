@@ -53,7 +53,7 @@ class Cub2011Eval(Dataset):
 
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
-        path = os.path.join(self.root, 'cub200_cropped', self.base_folder, sample.filepath)
+        path = os.path.join(self.root, self.base_folder, sample.filepath)
         target = sample.target - 1  # Targets start at 1 by default, so shift to 0
         img = self.loader(path)
         img_id = sample.img_id

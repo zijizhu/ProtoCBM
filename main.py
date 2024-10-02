@@ -259,6 +259,11 @@ if __name__ == "__main__":
 
     output_dir = Path(args.output_dir)
 
+    print("Dry run")
+    all_activation_maps, all_img_ids = get_activation_maps(ppnet, test_loc_loader)
+    mean_loc_acc, (all_loc_acc, all_attri_idx, all_num_samples) = evaluate_concept_trustworthiness(all_activation_maps, all_img_ids, bbox_half_size=45)
+    print("Dry run")
+
     # Train the model
     if utils.get_rank() == 0:
         logger.info(f"Start training for {args.epochs} epochs")
@@ -291,6 +296,10 @@ if __name__ == "__main__":
         tb_writer.add_scalar("epoch/val_acc1", test_stats['acc1'], epoch)
         tb_writer.add_scalar("epoch/val_loss", test_stats['loss'], epoch)
         tb_writer.add_scalar("epoch/val_acc5", test_stats['acc5'], epoch)
+
+        logger.info(f"epoch {epoch} val_acc1: {test_stats['acc1']}" )
+        logger.info(f"epoch {epoch} val_loss: {test_stats['loss']}")
+        logger.info(f"epoch {epoch} val_acc5: {test_stats['acc5']}")
 
         if utils.get_rank() == 0:
             logger.info(f"Accuracy of the network on the {len(test_dataset)} test images: {test_stats['acc1']:.2f}%")
