@@ -5,6 +5,7 @@ from util.local_parts import attributes_names, part_attributes_names, id_to_attr
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+@torch.no_grad()
 def get_activation_maps(ppnet, test_loader, corre_proto_num=10):
     # Get the averaged activation maps of all prototypes
     ppnet.eval()
@@ -50,6 +51,7 @@ def get_activation_maps(ppnet, test_loader, corre_proto_num=10):
     return all_activation_maps, all_img_ids
 
 
+@torch.no_grad()
 def evaluate_concept_trustworthiness(all_activation_maps, all_img_ids, bbox_half_size=36, img_size=224):
     """
     all_activation_maps[i] : (n_select_samples, fea_h, fea_w) for the i-th attribute
