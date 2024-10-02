@@ -308,6 +308,14 @@ if __name__ == "__main__":
                     'epoch': epoch,
                     'args': args,
                 }, checkpoint_path)
+        if epoch in [4, 10, 14]:   # save the last
+            checkpoint_paths = [output_dir / f'checkpoints/epoch{epoch}.pth']
+            for checkpoint_path in checkpoint_paths:
+                utils.save_on_master({
+                    'model': ppnet_without_ddp.state_dict(),
+                    'epoch': epoch,
+                    'args': args,
+                }, checkpoint_path)
         if utils.get_rank() == 0:
             logger.info(f'')
 
