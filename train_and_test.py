@@ -34,7 +34,10 @@ def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=Non
             image, label = data_item
         else:
             image, label, attributes = data_item
-            attributes = torch.stack(attributes).permute(1, 0).type(torch.FloatTensor).to(device)
+            if isinstance(attributes, list):
+                attributes = torch.stack(attributes).permute(1, 0).type(torch.FloatTensor).to(device)
+            else:
+                attributes = attributes.type(torch.FloatTensor).to(device)
 
         attributes_criterion = torch.nn.BCEWithLogitsLoss()
         # attributes_criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
@@ -54,7 +57,7 @@ def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=Non
                 logits, logits_attri, attributes_logits = output
             # Select the top output
             logits, logits_attri, attributes_logits, proto_acts, shallow_feas, deep_feas = \
-                logits[:bz], logits_attri[:bz], attributes_logits[:bz], proto_acts[:bz], shallow_feas[:bz], deep_feas[:bz]
+                logits[:bz], logits_attri[:bz], attributes_logits[:bz], proto_acts[:bz], shallow_feas, deep_feas
 
             del input
             # Compute loss
@@ -71,8 +74,10 @@ def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=Non
                 else:
                     consis_cost = model_without_ddp.get_CLA_loss(shallow_feas, deep_feas, scales=[1, 2], consis_thresh=args.consis_thresh)
                     mse_cost = model_without_ddp.get_CIA_loss(all_feas, bz, layer_idx=-1)
-            else:
+            elif use_pa:
                 cls_dis_cost, sep_dis_cost = model_without_ddp.get_PA_loss(proto_acts)
+            else:
+                cls_dis_cost, sep_dis_cost = 0, 0
 
             # Evaluation statistics
             _, predicted = torch.max(logits.data, 1)

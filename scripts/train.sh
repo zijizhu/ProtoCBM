@@ -125,9 +125,11 @@ do
         --base
 done
 
+data_path=/home/zhijie/source/datasets/
+
 for data_set in CelebA;
 do
-    prototype_num=2000
+    prototype_num=2560
     
     python -m torch.distributed.launch --nproc_per_node=$num_gpus --master_port=$use_port --use_env main.py \
         --seed=$seed \
@@ -155,7 +157,7 @@ do
         --prototype_vectors_lr=$prototype_vectors_lr \
         --add_on_layers_final_lr=$add_on_layers_final_lr \
         --prototype_vectors_final_lr=$prototype_vectors_final_lr \
-        --epochs=$epochs \
+        --epochs=30 \
         --warmup_epochs=$warmup_epochs \
         --proto_epochs=$proto_epochs \
         --decay_epochs=$decay_epochs \

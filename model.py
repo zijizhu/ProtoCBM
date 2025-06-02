@@ -11,7 +11,9 @@ from util.local_parts import part_attributes_names, attributes_names, id_to_attr
 from util.rotate_tensor import multiple_rotate_all, mask_tensor
 from models.vit_features import DINOv2BackboneExpanded
 
-base_architecture_to_features = {'resnet18': resnet18_cub_features,
+from torchvision.models import densenet121, densenet161, DenseNet121_Weights, DenseNet161_Weights, resnet18, ResNet18_Weights
+
+base_architecture_to_features = {'resnet18': nn.Sequential(*list(resnet18(weights=ResNet18_Weights.DEFAULT).children())[:-2]),
                                  'resnet34': resnet34_features,
                                  'resnet50': resnet50_features,
                                  'resnet50_inat': resnet50_inat_features,
@@ -22,7 +24,9 @@ base_architecture_to_features = {'resnet18': resnet18_cub_features,
                                  'deit_base': deit_base_features,
                                  # Foundational model experiments
                                  'dinov2_vits_exp': partial(DINOv2BackboneExpanded, name="dinov2_vits14_reg4", n_splits=3),
-                                 'dinov2_vitb_exp': partial(DINOv2BackboneExpanded, name="dinov2_vitb14_reg4", n_splits=3)}
+                                 'dinov2_vitb_exp': partial(DINOv2BackboneExpanded, name="dinov2_vitb14_reg4", n_splits=3),
+                                 "densenet121": densenet121(weights=DenseNet121_Weights).features,
+                                 "densenet121": densenet161(weights=DenseNet161_Weights).features}
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -72,8 +76,11 @@ class NewNet(nn.Module):
         elif features_name == "DINOV2_VITB14_REG4":
             self.shallow_layer_idx = 0
             first_add_on_layer_in_channels = 768
-        else:
-            raise Exception('other base base_architecture NOT implemented')
+        else:  # actual densenet features
+            self.shallow_layer_idx = 4
+            first_add_on_layer_in_channels = \
+                [i for i in features.modules() if isinstance(i, nn.BatchNorm2d)][-1].num_features
+            # raise Exception('other base base_architecture NOT implemented')
 
         if add_on_layers_type == 'bottleneck':
             add_on_layers = []
@@ -112,21 +119,25 @@ class NewNet(nn.Module):
         self.class_predictor = nn.Linear(self.num_attributes, self.num_classes)
 
         # Part Attributes
-        self.concept_groups = [['forehead', 'eye', 'crown', 'beak'], ['belly', 'back', 'leg']]
-        self.num_concept_groups = len(self.concept_groups)
-        self.mask_a_groups = [torch.zeros(self.num_attributes,) for _  in range(self.num_concept_groups)]
-        self.indexes_groups = []
-        for grp_idx in range(self.num_concept_groups):
-            for part_name in self.concept_groups[grp_idx]:
-                self.mask_a_groups[grp_idx] += torch.FloatTensor(np.array(attributes_names) == part_name)
-            self.indexes_groups.append(torch.nonzero(self.mask_a_groups[grp_idx] == 1).squeeze(dim=1).to(device))
+        if num_attributes == 112:  # Only for CUB dataset
+            self.concept_groups = [['forehead', 'eye', 'crown', 'beak'], ['belly', 'back', 'leg']]
+            self.num_concept_groups = len(self.concept_groups)
+            self.mask_a_groups = [torch.zeros(self.num_attributes,) for _  in range(self.num_concept_groups)]
+            self.indexes_groups = []
+            for grp_idx in range(self.num_concept_groups):
+                for part_name in self.concept_groups[grp_idx]:
+                    self.mask_a_groups[grp_idx] += torch.FloatTensor(np.array(attributes_names) == part_name)
+                self.indexes_groups.append(torch.nonzero(self.mask_a_groups[grp_idx] == 1).squeeze(dim=1).to(device))
         
         if init_weights:
             self._initialize_weights()
 
     def conv_features(self, x):
-
-        x, all_feas = self.features.forward_all(x)
+        if hasattr(self.features, "forward_all"):
+            x, all_feas = self.features.forward_all(x)
+        else:
+            x = self.features(x)
+            all_feas = []
         x = self.add_on_layers(x)
 
         return x, all_feas
@@ -277,13 +288,15 @@ class NewNet(nn.Module):
 
         fea_size = project_distances.shape[-1]
         project_distances = project_distances.flatten(start_dim=2)
-        shallow_feas = all_feas[self.shallow_layer_idx] if len(all_feas) > 0 else None
-        batch_size, dim, shallow_size = shallow_feas.shape[0], shallow_feas.shape[1], shallow_feas.shape[-1]
-        shallow_feas = shallow_feas.reshape(batch_size, dim, fea_size, shallow_size // fea_size, fea_size, shallow_size // fea_size)
-        shallow_feas = shallow_feas.permute(0, 1, 3, 5, 2, 4)   # (B, dim, 8, 8, 7, 7)
-        shallow_feas = shallow_feas.reshape(batch_size, -1, fea_size, fea_size)
-        shallow_feas = shallow_feas.flatten(start_dim=2)
-        deep_feas = all_feas[-1].flatten(start_dim=2) if len(all_feas) > 0 else None
+        shallow_feas, deep_feas = None, None
+        if len(all_feas) > 0:
+            shallow_feas = all_feas[self.shallow_layer_idx]
+            batch_size, dim, shallow_size = shallow_feas.shape[0], shallow_feas.shape[1], shallow_feas.shape[-1]
+            shallow_feas = shallow_feas.reshape(batch_size, dim, fea_size, shallow_size // fea_size, fea_size, shallow_size // fea_size)
+            shallow_feas = shallow_feas.permute(0, 1, 3, 5, 2, 4)   # (B, dim, 8, 8, 7, 7)
+            shallow_feas = shallow_feas.reshape(batch_size, -1, fea_size, fea_size)
+            shallow_feas = shallow_feas.flatten(start_dim=2)
+            deep_feas = all_feas[-1].flatten(start_dim=2)
 
         return (logits, logits_attri, attributes_logits), (cosine_min_distances, project_distances, shallow_feas, deep_feas, all_feas)
     
@@ -318,7 +331,11 @@ def construct_CBMNet(base_architecture, pretrained=True, img_size=224,
                     prototype_shape=(2000, 128, 1, 1), num_classes=200,
                     prototype_activation_function='log',
                     add_on_layers_type='bottleneck', num_attributes=112):
-    features = base_architecture_to_features[base_architecture](pretrained=pretrained)
+    if base_architecture.startswith("dense") or "18" in base_architecture:
+        features = base_architecture_to_features[base_architecture]
+    else:
+        features = base_architecture_to_features[base_architecture](pretrained=pretrained)
+        pass
     proto_layer_rf_info = None
                                                          
     return NewNet(features=features,

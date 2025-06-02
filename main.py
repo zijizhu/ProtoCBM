@@ -197,19 +197,23 @@ if __name__ == "__main__":
                 ])
     collate_fn = None
     num_attributes = 112
+    test_loc_dataset, sampler_val_loc, test_loc_loader = None, None, None
     if args.data_set == "CelebA":
         train_dataset, test_dataset, val_dataset, imbalance = generate_data(args.data_path, resol=224, transform=transform, seed=seed)
-        args.nb_classes = train_dataset.nb_classes
+        test_loc_dataset = None
+        args.nb_classes = 256
         num_attributes = 6
+        collate_fn=celeba_collate_fn
     else:
         train_dataset = Cub2011AttributeWhole(data_root=args.data_path, train=True, transform=transform)
         test_dataset = Cub2011AttributeWhole(data_root=args.data_path, train=False, transform=transform)
         test_loc_dataset = Cub2011Eval(root='datasets/', train=False, transform=transform)
-        args.nb_classes = train_dataset.nb_classes
+        args.nb_classes = 200
 
     sampler_train = torch.utils.data.RandomSampler(train_dataset)
     sampler_val = torch.utils.data.SequentialSampler(test_dataset)
-    sampler_val_loc = torch.utils.data.SequentialSampler(test_loc_dataset)
+    if test_loc_dataset is not None:
+        sampler_val_loc = torch.utils.data.SequentialSampler(test_loc_dataset)
 
     # Train loader & test loader
     train_loader = torch.utils.data.DataLoader(
@@ -224,12 +228,13 @@ if __name__ == "__main__":
         num_workers=16,
         pin_memory=False,
         collate_fn=collate_fn)
-    test_loc_loader = torch.utils.data.DataLoader(
-        test_loc_dataset, sampler=sampler_val_loc,
-        batch_size=args.test_batch_size,
-        num_workers=16,
-        pin_memory=False,
-        collate_fn=collate_fn)
+    if "CUB" in args.data_set:
+        test_loc_loader = torch.utils.data.DataLoader(
+            test_loc_dataset, sampler=sampler_val_loc,
+            batch_size=args.test_batch_size,
+            num_workers=16,
+            pin_memory=False,
+            collate_fn=collate_fn)
 
     # Construct the model
     ppnet = model.construct_CBMNet(base_architecture=args.base_architecture,
