@@ -137,6 +137,7 @@ if __name__ == "__main__":
     # Distributed Training
     # TODO uncomment
     # utils.init_distributed_mode(args)
+    args.output_dir = args.output_dir + ("-base" if args.base else "") + ("-no_pa" if args.disable_pa else "")
 
     tb_writer, logger = get_outlog(args)
 
