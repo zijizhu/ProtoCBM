@@ -22,6 +22,7 @@ from pathlib import Path
 from util.datasets import Cub2011AttributeWhole, Cub2011Eval
 from util.preprocess import mean, std
 from util.eval_concept_trustworthiness import get_activation_maps, evaluate_concept_trustworthiness
+from celeba_data import generate_data, celeba_collate_fn
 
 
 def set_seed(seed):
@@ -77,7 +78,7 @@ if __name__ == "__main__":
     # Data
     parser.add_argument('--use_crop', type=str2bool, default=True)
     parser.add_argument('--data_set', default='CUB2011',
-        choices=['CUB2011A', 'CUB2011U', 'Car', 'Dogs', 'CUB2011', 'CUB2011AW', 'CUB2011AO'], type=str)
+        choices=['CUB2011A', 'CUB2011U', 'Car', 'Dogs', 'CUB2011', 'CUB2011AW', 'CUB2011AO', 'CelebA'], type=str)
     parser.add_argument('--data_path', type=str, default='datasets/cub200_cropped/')
     parser.add_argument('--train_batch_size', default=80, type=int)
     parser.add_argument('--test_batch_size', default=150, type=int)
@@ -148,7 +149,7 @@ if __name__ == "__main__":
     dataset_name = args.data_set
 
     base_architecture_type = re.match('^[a-z]*', base_architecture).group(0)
-    model_dir = args.output_dir + "-base" if args.base else "" + "-no_pa" if args.disable_pa else ""
+    model_dir = args.output_dir + ("-base" if args.base else "") + ("-no_pa" if args.disable_pa else "")
 
     os.makedirs(model_dir, exist_ok=True)
 
@@ -162,6 +163,8 @@ if __name__ == "__main__":
         args.nb_classes = 200
     elif dataset_name == 'Car':
         args.nb_classes = 196
+    elif dataset_name == "CelebA":
+        args.nb_classes = 256
     img_size = args.input_size
 
     # Optimzer
@@ -190,10 +193,17 @@ if __name__ == "__main__":
                     transforms.ToTensor(),
                     normalize,
                 ])
-    train_dataset = Cub2011AttributeWhole(data_root=args.data_path, train=True, transform=transform)
-    test_dataset = Cub2011AttributeWhole(data_root=args.data_path, train=False, transform=transform)
-    test_loc_dataset = Cub2011Eval(root='datasets/', train=False, transform=transform)
-    args.nb_classes = train_dataset.nb_classes
+    collate_fn = None
+    num_attributes = 112
+    if args.data_set == "CelebA":
+        train_dataset, test_dataset, val_dataset, imbalance = generate_data(args.data_path, resol=224, transform=transform, seed=seed)
+        args.nb_classes = train_dataset.nb_classes
+        num_attributes = 6
+    else:
+        train_dataset = Cub2011AttributeWhole(data_root=args.data_path, train=True, transform=transform)
+        test_dataset = Cub2011AttributeWhole(data_root=args.data_path, train=False, transform=transform)
+        test_loc_dataset = Cub2011Eval(root='datasets/', train=False, transform=transform)
+        args.nb_classes = train_dataset.nb_classes
 
     sampler_train = torch.utils.data.RandomSampler(train_dataset)
     sampler_val = torch.utils.data.SequentialSampler(test_dataset)
@@ -204,17 +214,20 @@ if __name__ == "__main__":
         train_dataset, sampler=sampler_train,
         batch_size=args.train_batch_size,
         num_workers=16, 
-        pin_memory=False)
+        pin_memory=False,
+        collate_fn=collate_fn)
     test_loader = torch.utils.data.DataLoader(
         test_dataset, sampler=sampler_val,
         batch_size=args.test_batch_size,
         num_workers=16,
-        pin_memory=False)
+        pin_memory=False,
+        collate_fn=collate_fn)
     test_loc_loader = torch.utils.data.DataLoader(
         test_loc_dataset, sampler=sampler_val_loc,
         batch_size=args.test_batch_size,
         num_workers=16,
-        pin_memory=False)
+        pin_memory=False,
+        collate_fn=collate_fn)
 
     # Construct the model
     ppnet = model.construct_CBMNet(base_architecture=args.base_architecture,
@@ -222,7 +235,8 @@ if __name__ == "__main__":
                                 prototype_shape=args.prototype_shape,
                                 num_classes=args.nb_classes,
                                 prototype_activation_function=args.prototype_activation_function,
-                                add_on_layers_type=args.add_on_layers_type)
+                                add_on_layers_type=args.add_on_layers_type,
+                                num_attributes=num_attributes)
     ppnet.to(device)
     ppnet_without_ddp = ppnet
 
@@ -286,7 +300,7 @@ if __name__ == "__main__":
 
         test_stats = evaluate_joint(data_loader=test_loader, model=ppnet, device=device, args=args, epoch=epoch)
         
-        if epoch >= args.proto_epochs:
+        if epoch >= args.proto_epochs and "CUB" in dataset_name:
             all_activation_maps, all_img_ids = get_activation_maps(ppnet, test_loc_loader)
             mean_loc_acc, (all_loc_acc, all_attri_idx, all_num_samples) = evaluate_concept_trustworthiness(all_activation_maps, all_img_ids, bbox_half_size=45)
         else:

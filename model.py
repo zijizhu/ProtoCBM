@@ -317,7 +317,7 @@ class NewNet(nn.Module):
 def construct_CBMNet(base_architecture, pretrained=True, img_size=224,
                     prototype_shape=(2000, 128, 1, 1), num_classes=200,
                     prototype_activation_function='log',
-                    add_on_layers_type='bottleneck'):
+                    add_on_layers_type='bottleneck', num_attributes=112):
     features = base_architecture_to_features[base_architecture](pretrained=pretrained)
     proto_layer_rf_info = None
                                                          
@@ -328,4 +328,5 @@ def construct_CBMNet(base_architecture, pretrained=True, img_size=224,
                  num_classes=num_classes,
                  init_weights=True,
                  prototype_activation_function=prototype_activation_function,
-                 add_on_layers_type=add_on_layers_type)
+                 add_on_layers_type=add_on_layers_type,
+                 num_attributes=num_attributes)
