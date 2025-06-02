@@ -112,7 +112,8 @@ if __name__ == "__main__":
     parser.add_argument('--predictor_lr', type=float, default=1e-4)
     parser.add_argument('--add_on_layers_final_lr', type=float, default=5e-4)
     parser.add_argument('--prototype_vectors_final_lr', type=float, default=5e-4)
-    parser.add_argument('--epochs', type=int, default=22)
+    # parser.add_argument('--epochs', type=int, default=22)
+    parser.add_argument('--epochs', type=int, default=18)
     parser.add_argument('--warmup_epochs', type=int, default=5, metavar='N')
     parser.add_argument('--proto_epochs', type=int, default=12, metavar='N')
     parser.add_argument('--decay_epochs', type=int, default=3)
@@ -150,7 +151,7 @@ if __name__ == "__main__":
     dataset_name = args.data_set
 
     base_architecture_type = re.match('^[a-z]*', base_architecture).group(0)
-    model_dir = args.output_dir + ("-base" if args.base else "") + ("-no_pa" if args.disable_pa else "")
+    model_dir = args.output_dir
 
     os.makedirs(model_dir, exist_ok=True)
 
