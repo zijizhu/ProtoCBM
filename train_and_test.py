@@ -8,7 +8,7 @@ from util.rotate_tensor import multiple_rotate_all, mask_tensor
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=None, use_l1_mask=True,
-                   coefs=None, args=None, log=print, use_pa=True):
+                   coefs=None, args=None, log=print, use_pa=True, base=False):
     '''
     model: the multi-gpu model
     dataloader:
@@ -65,8 +65,12 @@ def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=Non
             model_without_ddp = model.module if hasattr(model, 'module') else model
             if epoch < args.proto_epochs:
                 ortho_cost = model_without_ddp.get_ortho_loss()
-                consis_cost = model_without_ddp.get_CLA_loss(shallow_feas, deep_feas, scales=[1, 2], consis_thresh=args.consis_thresh)
-                mse_cost = model_without_ddp.get_CIA_loss(all_feas, bz, layer_idx=-1)
+                if base:
+                    consis_cost = 0
+                    mse_cost = 0
+                else:
+                    consis_cost = model_without_ddp.get_CLA_loss(shallow_feas, deep_feas, scales=[1, 2], consis_thresh=args.consis_thresh)
+                    mse_cost = model_without_ddp.get_CIA_loss(all_feas, bz, layer_idx=-1)
             else:
                 cls_dis_cost, sep_dis_cost = model_without_ddp.get_PA_loss(proto_acts)
 
@@ -122,12 +126,12 @@ def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=Non
     return n_correct / n_examples, results_loss
 
 
-def train(model, epoch, dataloader, optimizer, tb_writer, iteration, coefs=None, args=None, log=print, use_pa=True):
+def train(model, epoch, dataloader, optimizer, tb_writer, iteration, coefs=None, args=None, log=print, use_pa=True, base=False):
     assert(optimizer is not None)
 
     model.train()
     return _train_or_test(model=model, epoch=epoch, dataloader=dataloader, optimizer=optimizer, tb_writer=tb_writer,
-                          iteration=iteration, coefs=coefs, args=args, log=log, use_pa=use_pa)
+                          iteration=iteration, coefs=coefs, args=args, log=log, use_pa=use_pa, base=base)
 
 
 def test(model, epoch, dataloader, tb_writer, iteration, args=None, log=print):

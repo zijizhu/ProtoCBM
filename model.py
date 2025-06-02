@@ -277,13 +277,13 @@ class NewNet(nn.Module):
 
         fea_size = project_distances.shape[-1]
         project_distances = project_distances.flatten(start_dim=2)
-        shallow_feas = all_feas[self.shallow_layer_idx]
+        shallow_feas = all_feas[self.shallow_layer_idx] if len(all_feas) > 0 else None
         batch_size, dim, shallow_size = shallow_feas.shape[0], shallow_feas.shape[1], shallow_feas.shape[-1]
         shallow_feas = shallow_feas.reshape(batch_size, dim, fea_size, shallow_size // fea_size, fea_size, shallow_size // fea_size)
         shallow_feas = shallow_feas.permute(0, 1, 3, 5, 2, 4)   # (B, dim, 8, 8, 7, 7)
         shallow_feas = shallow_feas.reshape(batch_size, -1, fea_size, fea_size)
         shallow_feas = shallow_feas.flatten(start_dim=2)
-        deep_feas = all_feas[-1].flatten(start_dim=2)
+        deep_feas = all_feas[-1].flatten(start_dim=2) if len(all_feas) > 0 else None
 
         return (logits, logits_attri, attributes_logits), (cosine_min_distances, project_distances, shallow_feas, deep_feas, all_feas)
     

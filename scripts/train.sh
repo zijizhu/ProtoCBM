@@ -82,5 +82,6 @@ do
         --decay_epochs=$decay_epochs \
         --decay_rate=$decay_rate \
         --use_mse_loss=$use_mse_loss \
+        --base \
         --disable_pa
 done

@@ -123,6 +123,7 @@ if __name__ == "__main__":
     parser.add_argument('--dist-eval', action='store_true', default=False, help='Enabling distributed evaluation')
 
     parser.add_argument("--disable_pa", action="store_true")
+    parser.add_argument("--base", action="store_true")
 
     args = parser.parse_args()
 
@@ -147,7 +148,7 @@ if __name__ == "__main__":
     dataset_name = args.data_set
 
     base_architecture_type = re.match('^[a-z]*', base_architecture).group(0)
-    model_dir = args.output_dir
+    model_dir = args.output_dir + "-base" if args.base else "" + "-no_pa" if args.disable_pa else ""
 
     os.makedirs(model_dir, exist_ok=True)
 
@@ -269,19 +270,19 @@ if __name__ == "__main__":
         if epoch < args.warmup_epochs:
             tnt.warm_only_new(model=ppnet)
             _, train_results = tnt.train(model=ppnet, epoch=epoch, dataloader=train_loader, optimizer=warm_optimizer,
-                        coefs=coefs, args=args, tb_writer=tb_writer, iteration=__global_values__["it"])
+                        coefs=coefs, args=args, tb_writer=tb_writer, iteration=__global_values__["it"], use_pa=not args.disable_pa, base=args.base)
             continue
         elif epoch < args.proto_epochs:
             tnt.joint_new(model=ppnet)
             joint_lr_scheduler.step()
             _, train_results = tnt.train(model=ppnet, epoch=epoch, dataloader=train_loader, optimizer=joint_optimizer,
-                        coefs=coefs, args=args, tb_writer=tb_writer, iteration=__global_values__["it"])
+                        coefs=coefs, args=args, tb_writer=tb_writer, iteration=__global_values__["it"], use_pa=not args.disable_pa, base=args.base)
             continue
         else:
             tnt.final_new(model=ppnet)
             final_lr_scheduler.step()
             _, train_results = tnt.train(model=ppnet, epoch=epoch, dataloader=train_loader, optimizer=final_optimizer,
-                        coefs=coefs, args=args, tb_writer=tb_writer, iteration=__global_values__["it"], use_pa=not args.disable_pa)
+                        coefs=coefs, args=args, tb_writer=tb_writer, iteration=__global_values__["it"], use_pa=not args.disable_pa, base=args.base)
 
         test_stats = evaluate_joint(data_loader=test_loader, model=ppnet, device=device, args=args, epoch=epoch)
         
