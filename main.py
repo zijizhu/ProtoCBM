@@ -189,8 +189,8 @@ if __name__ == "__main__":
                     transforms.ToTensor(),
                     normalize,
                 ])
-    train_dataset = Cub2011AttributeWhole(data_root=args.data_root, train=True, transform=transform)
-    test_dataset = Cub2011AttributeWhole(data_root=args.data_root, train=False, transform=transform)
+    train_dataset = Cub2011AttributeWhole(data_root=args.data_path, train=True, transform=transform)
+    test_dataset = Cub2011AttributeWhole(data_root=args.data_path, train=False, transform=transform)
     test_loc_dataset = Cub2011Eval(root='datasets/', train=False, transform=transform)
     args.nb_classes = train_dataset.nb_classes
 

@@ -44,6 +44,8 @@ use_mse_loss=true
 
 ft=train
 
+data_path=./datasets/cub200_cropped/
+
 for data_set in CUB2011;
 do
     prototype_num=2000

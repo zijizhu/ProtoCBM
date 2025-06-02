@@ -114,7 +114,6 @@ class Cub2011AttributeWhole(Dataset):
         self.loader = default_loader
 
         self.data_root = data_root
-        self.data_root = 'datasets/cub200_cropped/'
         root_prefix = 'train_cropped_augmented' if train == True else 'test_cropped'
         self.img_root = os.path.join(self.data_root, root_prefix)
         self.all_img_paths, self.all_labels = [], []
