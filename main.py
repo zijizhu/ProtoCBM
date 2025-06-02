@@ -122,6 +122,8 @@ if __name__ == "__main__":
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
     parser.add_argument('--dist-eval', action='store_true', default=False, help='Enabling distributed evaluation')
 
+    parser.add_argument("--disable_pa", action="store_true")
+
     args = parser.parse_args()
 
     torch.multiprocessing.set_sharing_strategy('file_system')
@@ -187,8 +189,8 @@ if __name__ == "__main__":
                     transforms.ToTensor(),
                     normalize,
                 ])
-    train_dataset = Cub2011AttributeWhole(train=True, transform=transform)
-    test_dataset = Cub2011AttributeWhole(train=False, transform=transform)
+    train_dataset = Cub2011AttributeWhole(data_root=args.data_root, train=True, transform=transform)
+    test_dataset = Cub2011AttributeWhole(data_root=args.data_root, train=False, transform=transform)
     test_loc_dataset = Cub2011Eval(root='datasets/', train=False, transform=transform)
     args.nb_classes = train_dataset.nb_classes
 
@@ -279,7 +281,7 @@ if __name__ == "__main__":
             tnt.final_new(model=ppnet)
             final_lr_scheduler.step()
             _, train_results = tnt.train(model=ppnet, epoch=epoch, dataloader=train_loader, optimizer=final_optimizer,
-                        coefs=coefs, args=args, tb_writer=tb_writer, iteration=__global_values__["it"])
+                        coefs=coefs, args=args, tb_writer=tb_writer, iteration=__global_values__["it"], use_pa=not args.disable_pa)
 
         test_stats = evaluate_joint(data_loader=test_loader, model=ppnet, device=device, args=args, epoch=epoch)
         

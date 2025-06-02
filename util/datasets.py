@@ -109,10 +109,11 @@ class Cub2011Attribute(Dataset):
     
 
 class Cub2011AttributeWhole(Dataset):
-    def __init__(self, train=True, transform=None, loader=default_loader):
+    def __init__(self, data_root: str, train=True, transform=None, loader=default_loader):
         self.transform = transform
         self.loader = default_loader
 
+        self.data_root = data_root
         self.data_root = 'datasets/cub200_cropped/'
         root_prefix = 'train_cropped_augmented' if train == True else 'test_cropped'
         self.img_root = os.path.join(self.data_root, root_prefix)

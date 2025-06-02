@@ -8,7 +8,7 @@ from util.rotate_tensor import multiple_rotate_all, mask_tensor
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=None, use_l1_mask=True,
-                   coefs=None, args=None, log=print):
+                   coefs=None, args=None, log=print, use_pa=True):
     '''
     model: the multi-gpu model
     dataloader:
@@ -89,9 +89,9 @@ def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=Non
                     + coefs['mse'] * mse_cost)
             elif epoch >= args.proto_epochs:    # Only train the predictor
                 loss = (coefs['crs_ent'] * cross_entropy
-                    + coefs['attri'] * attributes_cost
-                    + coefs['cls_dis'] * cls_dis_cost
-                    + coefs['sep_dis'] * sep_dis_cost)
+                    + coefs['attri'] * attributes_cost)
+                if use_pa:
+                    loss += (coefs['cls_dis'] * cls_dis_cost + coefs['sep_dis'] * sep_dis_cost)
                     
             loss_value = loss.item()
             optimizer.zero_grad()
@@ -122,12 +122,12 @@ def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=Non
     return n_correct / n_examples, results_loss
 
 
-def train(model, epoch, dataloader, optimizer, tb_writer, iteration, coefs=None, args=None, log=print):
+def train(model, epoch, dataloader, optimizer, tb_writer, iteration, coefs=None, args=None, log=print, use_pa=True):
     assert(optimizer is not None)
 
     model.train()
     return _train_or_test(model=model, epoch=epoch, dataloader=dataloader, optimizer=optimizer, tb_writer=tb_writer,
-                          iteration=iteration, coefs=coefs, args=args, log=log)
+                          iteration=iteration, coefs=coefs, args=args, log=log, use_pa=use_pa)
 
 
 def test(model, epoch, dataloader, tb_writer, iteration, args=None, log=print):
